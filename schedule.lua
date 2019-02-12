@@ -79,6 +79,29 @@ local function update (delta)
     end
 end
 
+return {
+    -- @brief start a schedule of function
+    --     create a corountine from pool and resume it.
+    -- @param func[in, function]: entrance
+    -- @return corountine-type
+    start = start, -- (func) => coroutine
+
+    -- @brief suspend current corountine/schedule for sec second(s).
+    -- @param sec[in, number]: second to wait, option is 0.
+    -- @note it may yield at least one time of the update.
+    wait = wait, -- (sec) => nil
+
+    -- @brief stop a corountine/schedule
+    -- @param co[in, corountine]: it should be the value return from @see start(func)
+    --    it also works on any corountine that coroutine.status() return "suspended".
+    stop = stop, -- (co) => nil
+
+    -- @brief the heartbeat of the schedules
+    -- @param delta[in, number]: the second from last call of the update().
+    update = update, -- (delta) => nil
+}
+
+
 --[[
 -- For example:
 
@@ -121,25 +144,3 @@ schedule.start(function()
     return
 end)
 --]]
-
-return {
-    -- @brief start a schedule of function
-    --     create a corountine from pool and resume it.
-    -- @param func[in, function]: entrance
-    -- @return corountine-type
-    start = start, -- (func) => coroutine
-
-    -- @brief suspend current corountine/schedule for sec second(s).
-    -- @param sec[in, number]: second to wait, option is 0.
-    -- @note it may yield at least one time of the update.
-    wait = wait, -- (sec) => nil
-
-    -- @brief stop a corountine/schedule
-    -- @param co[in, corountine]: it should be the value return from @see start(func)
-    --    it also works on any corountine that coroutine.status() return "suspended".
-    stop = stop, -- (co) => nil
-
-    -- @brief the heartbeat of the schedules
-    -- @param delta[in, number]: the second from last call of the update().
-    update = update, -- (delta) => nil
-}
