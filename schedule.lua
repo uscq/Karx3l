@@ -14,7 +14,6 @@ local type = type
 local next = next
 local pcall = pcall
 local pairs = pairs
-local error = print
 local assert = assert
 local coroutine_create = coroutine.create
 local coroutine_resume = coroutine.resume
@@ -22,6 +21,7 @@ local coroutine_status = coroutine.status
 local coroutine_yield  = coroutine.yield
 local coroutine_running = coroutine.running
 
+local schedule_error = print
 local schedule_idles = { }
 local schedule_stash = { }
 local schedule_pairs = { }
@@ -29,20 +29,26 @@ local schedule_pairs = { }
 local function auxiliary (entrance)
     repeat
         local suc, msg = pcall(entrance)
-        if not suc then error(msg) end
+        if not suc then schedule_error(msg) end
         schedule_idles[coroutine_running()] = true
         entrance = coroutine_yield()
     until not entrance
 end
 
-local function start (func)
+local function alloc ( )
     local co = next(schedule_idles)
+
     if co then
         schedule_idles[co] = nil
     else
         co = coroutine_create(auxiliary)
     end
 
+    return co
+end
+
+local function start (func)
+    local co = alloc()
     assert(coroutine_resume(co, func))
     return co
 end
@@ -57,7 +63,8 @@ local function wait (sec)
 end
 
 local function stop (co)
-    assert(coroutine_status() == "suspended", "not a suspended coroutine")
+    local checked = coroutine_status() == "suspended"
+    assert(checked, "not a suspended coroutine")
     schedule_stash[co] = nil
     schedule_pairs[co] = nil
     schedule_idles[co] = true
@@ -80,9 +87,24 @@ local function update (delta)
 end
 
 return {
+    -- @brief create a schedule handler (corountine) from pool
+    -- @note the result corountine is a wrapped corountine that
+    --    diff from standard coroutine.create().
+    --    That is, when calling coroutine.resume() with the wrapped
+    --    corountine return by alloc(), it does not take extra agruments.
+    --    After first call on resume(), it is a standard corountine to resume()/yield().
+    --
+    --    For example:
+    --        local co = alloc()
+    --        coroutine.resume(co, print, 'a', 'b') -- you got a blank line
+    --
+    --        local co2 = coroutine.create(print)
+    --        coroutine.resume(co2, 'a', 'b') -- you got "a b"
+    alloc = alloc, -- () => coroutine
+
     -- @brief start a schedule of function
-    --     create a corountine from pool and resume it.
-    -- @param func[in, function]: entrance
+    --     that is call @see alloc() and resume it.
+    -- @param func[in, function]: the entrance of thread
     -- @return corountine-type
     start = start, -- (func) => coroutine
 
@@ -99,6 +121,12 @@ return {
     -- @brief the heartbeat of the schedules
     -- @param delta[in, number]: the second from last call of the update().
     update = update, -- (delta) => nil
+
+    -- @brief alias of standard coroutine.yield()
+    yield = coroutine_yield,
+
+    -- @brief alias of standard coroutine.resume()
+    resume = coroutine_resume,
 }
 
 
