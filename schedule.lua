@@ -28,8 +28,7 @@ local schedule_pairs = { }
 
 local function auxiliary (entrance)
     repeat
-        local suc, msg = pcall(entrance)
-        if not suc then schedule_error(msg) end
+        entrance()
         schedule_idles[coroutine_running()] = true
         entrance = coroutine_yield()
     until not entrance
